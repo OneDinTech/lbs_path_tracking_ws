@@ -17,23 +17,25 @@ For competitions there is an interactive **path generator**: type a goal
   [livox_ros_driver2](https://github.com/Livox-SDK/livox_ros_driver2),
   [FAST_LIO (ROS 2)](https://github.com/hku-mars/FAST_LIO) with a `mid360.yaml` config
 * A SocketCAN interface (`can0`) for the motors (real robot only)
-* For the simulation tools: `python3-numpy`, `python3-yaml`, `python3-matplotlib`
 
 ## 2. Build
 
-Clone this repository
+Clone this repository **as the `src` folder** of a workspace:
 
-```
-cd ~
-git clone https://github.com/OneDinTech/lbs_path_tracking_ws.git
-
+```bash
+mkdir -p ~/path_tracking_ws
+git clone <this-repo-url> ~/path_tracking_ws/src
+cd ~/path_tracking_ws
+source /opt/ros/humble/setup.bash
+rosdep install --from-paths src -y --ignore-src
+colcon build
 ```
 
 Each new terminal (Livox and FAST-LIO first, then this workspace):
 
 ```bash
 source ~/ws_livox/install/setup.bash        # your Livox + FAST-LIO workspace
-source ~/lbs_path_tracking_ws/install/setup.bash
+source ~/path_tracking_ws/install/setup.bash
 ```
 
 ---
@@ -60,7 +62,7 @@ Yes, this already includes the Livox driver and FAST-LIO. It starts in stages:
 | 0 s | robot model (URDF), static TFs, joystick |
 | 3 s | Livox driver (`msg_MID360_launch.py`) |
 | 6 s | FAST-LIO (`mapping.launch.py`, `mid360.yaml`). **Keep the robot still for about 3 s** |
-| 9 s | `path_tracker` + `robot_controller` (**motors live**) + CSV recorder |
+| 9 s | `path_tracker` + `robot_controller` (**motors live**) |
 
 No joystick? Add `use_joy:=false`.
 
@@ -86,8 +88,8 @@ New goal
 
 * Every goal is measured from the **robot center at the moment you press
   Enter**, wherever the robot is on the map. The origin always moves with the robot.
-* The path is a straight line with a pose every 0.05 m (like `path_planner_v2.py`),
-  each pose with its own heading, interpolated from the start to the goal heading.
+* The path is a straight line with a pose every 0.05 m, each pose with its own
+  heading, interpolated from the start to the goal heading.
 * `x = 0, y = 0` with a theta: the robot turns in place.
 * Empty input counts as 0. A new goal replaces the current one. `q` quits.
 * Turning more than 180 degrees: send it as two goals.
@@ -117,6 +119,11 @@ In RViz set **Fixed Frame** to `map`, then add **RobotModel**
 | `sensors_only` | localization only. **Motors stay off** (safe TF / odometry test) |
 | `manual_drive_with_sensors` | joystick driving + localization |
 | `manual_drive_no_sensors` | joystick driving only |
+
+Extra arguments: `use_joy:=false`, `use_rviz:=true`.
+Simulation: `sim.launch.py mode:=manual` drives the sim with the joystick.
+
+---
 
 ## 6. Changing parameters
 
@@ -176,15 +183,15 @@ src/
 │       ├── bringup.launch.py           real robot: model, TF, Livox, FAST-LIO, tracker, motors
 │       ├── sim.launch.py               simulation + RViz
 │       └── description.launch.py       robot model + joint sliders + RViz (no motors)
-├── robot_description/              URDF of the robot
-│   └── urdf/robot.xacro.urdf
+└── robot_description/              URDF of the robot
+    └── urdf/robot.xacro.urdf
 ```
 
 ### Topics
 
 | Topic | Type | From -> To |
 |-------|------|------------|
-| `/plan` | `nav_msgs/Path` (frame `map`) | path_generator / planner -> path_tracker |
+| `/plan` | `nav_msgs/Path` (frame `map`) | path_generator -> path_tracker |
 | `/cmd_vel` | `geometry_msgs/Twist` (body frame) | path_tracker -> robot_controller |
 | `/cmd_vel_manual` | `geometry_msgs/Twist` | ps4 -> robot_controller |
 | `/joint_states` | `sensor_msgs/JointState` | robot_controller or sim -> RViz |
