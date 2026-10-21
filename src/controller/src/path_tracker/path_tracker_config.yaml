@@ -1,0 +1,67 @@
+# =====================================================================
+# path_tracker_config.yaml
+#
+# Path tracker tuning, shared by path_tracker (the real robot) and
+# path_tracker_sim (the kinematic simulation).
+#
+# The tuning lives in ONE block, "/**" (applies to every node that loads
+# this file). Both nodes load it, so the sim always uses exactly the same
+# tuning as the real robot. Tune here once, both follow.
+#
+# The per-node blocks below hold only what is truly different between
+# the two (frames, safety checks, sim-only switches).
+#
+# The sim's speed/acceleration/wheel limits are NOT here: the sim reads
+# robot_controller_config.yaml, the same file the real motor driver uses.
+#
+# Edit a value here and RELAUNCH. Live change while running:
+#     ros2 param set /path_tracker kp_heading 1.2
+# =====================================================================
+
+/**:
+  ros__parameters:
+    # ---- path tracker (shared: real robot AND sim) ----
+    min_lookahead_distance: 0.1
+    max_lookahead_distance: 1.5
+    lookahead_time: 0.25
+    desired_linear_velocity: 1.5        # pt_.V
+    kp_heading: 1.0                     # fixed proportional heading gain
+    max_linear_acceleration: 1.0
+    approach_velocity_scaling_distance: 1.0
+    minimum_approach_linear_velocity: 0.2
+    minimum_linear_velocity: 0.0
+    maximum_angular_velocity: 1.0
+    maximum_angular_acceleration: 0.5
+    distance_goal_tolerance: 0.05
+    yaw_goal_tolerance: 0.1
+
+    corner_detection: true
+    corner_velocity: 0.7
+    min_corner_slowdown_distance: 0.5
+    corner_decel: 1.3                   # hard decel used ONLY to brake into corners (gentle max_linear_acceleration stays for normal driving)
+    corner_angle_threshold: 0.35
+
+# ---- real robot only ----
+/path_tracker:
+  ros__parameters:
+    map_frame: "map"
+    base_frame: "base_footprint"
+    tf_poll_freq: 100.0
+    strict_frame: true
+    pose_timeout: 0.25
+
+# ---- simulation only ----
+/path_tracker_sim:
+  ros__parameters:
+    map_frame: "map"
+    base_frame: "base_footprint"
+
+    # false = follow /plan with the path tracker; true = joystick drive.
+    # The launch overrides this from mode:=auto|manual, so this default
+    # only applies if you run path_tracker_sim without the launch.
+    manual_mode: false
+
+    # false = like the real robot: the robot starts where it is.
+    # true  = jump the sim robot onto the first path pose on each new /plan
+    #         (handy for running the same path again without relaunching).
+    teleport_to_start: false

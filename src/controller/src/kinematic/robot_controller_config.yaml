@@ -1,0 +1,43 @@
+# =====================================================================
+# robot_controller_config.yaml -- config for the AUTONOMOUS motor driver
+# (robot_controller.cpp). Reads /cmd_vel from path_tracker and drives
+# the CAN motors.
+#
+# This is the autonomous counterpart to /manual_drive in manual_config.yaml.
+# Both drive the SAME hardware, so these motor values should match
+# /manual_drive's. If you change invert_drive, wheel_speed_max, the CAN
+# ids, or the kinematics here, change them in manual_config.yaml too.
+#
+# Edit here and RELAUNCH -- no colcon build (with --symlink-install).
+# Live:  ros2 param set /robot_controller max_linear_velocity 1.0
+# =====================================================================
+
+# "/**" (every node that loads this file) instead of "/robot_controller",
+# so the SAME values also reach path_tracker_sim: the sim applies these
+# limits (clamp, slew, wheel desaturation, kinematics) exactly like the
+# real robot_controller. It ignores the CAN and wiring entries.
+/**:
+  ros__parameters:
+    # ---- CAN ----
+    can_interface: "can0"
+    can_bitrate: 1000000
+    speed_ids: [1, 3, 5]        # drive motor CAN ids
+    steer_ids: [2, 4, 6]        # steer motor CAN ids
+
+    # ---- kinematics ----
+    robot_l: 0.24647            # centre -> wheel distance (m)
+    wheel_r: 0.045              # wheel radius (m)
+
+    # ---- limits ----
+    wheel_speed_max: 35.0       # rad/s desaturation cap
+    max_linear_velocity: 1.5    # clamp on incoming twist (m/s)
+    max_angular_velocity: 2.0   # clamp on incoming twist (rad/s)
+    max_linear_accel: 2.0       # slew limit (m/s^2)
+    max_angular_accel: 3.0      # slew limit (rad/s^2)
+
+    # ---- safety ----
+    cmd_timeout: 0.3            # stop if no /cmd_vel within this (s)
+    control_rate: 100.0         # Hz
+
+    # ---- wiring ----
+    invert_drive: false          # flip drive sign for this hardware

@@ -1,0 +1,308 @@
+<?xml version="1.0"?>
+<robot name="swervedrive_robot"
+  xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="use_sim" default="false"/>
+
+  <!-- ============================================================
+       Inertia macros
+       ============================================================ -->
+
+  <xacro:macro name="box_inertia" params="m l w h xyz rpy">
+    <inertial>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(1/12.0) * m * (h*h + l*l)}" ixy="0" ixz="0"
+               iyy="${(1/12.0) * m * (w*w + l*l)}" iyz="0"
+               izz="${(1/12.0) * m * (w*w + h*h)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cylinder_inertia" params="m r h xyz rpy">
+    <inertial>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(1/12.0) * m * (3*r*r + h*h)}" ixy="0" ixz="0"
+               iyy="${(1/12.0) * m * (3*r*r + h*h)}" iyz="0"
+               izz="${0.5 * m * r*r}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="sphere_inertia" params="m r xyz rpy">
+    <inertial>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(2/5.0) * m * r*r}" ixy="0" ixz="0"
+               iyy="${(2/5.0) * m * r*r}" iyz="0"
+               izz="${(2/5.0) * m * r*r}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_inertia" params="m r h xyz rpy">
+    <inertial>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <mass value="${m}"/>
+      <inertia ixx="${(1/12.0) * m * (3*r*r + h*h)}" ixy="0" ixz="0"
+               iyy="${0.5 * m * r*r}"                 iyz="0"
+               izz="${(1/12.0) * m * (3*r*r + h*h)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ============================================================
+       Base Footprint Link
+       ============================================================ -->
+
+  <link name="base_footprint"/>
+
+  <!-- ============================================================
+       Base Link
+       ============================================================ -->
+  <link name="base_link">
+    <xacro:cylinder_inertia m="1.0" r="0.20147" h="0.05"
+                       xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.20147" length="0.05"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.20147" length="0.05"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Steering Wheel 1 Link
+       ============================================================ -->
+
+  <link name="steering_wheel1_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.01"
+                       xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Steering Wheel 2 Link
+       ============================================================ -->
+
+  <link name="steering_wheel2_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.01"
+                       xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Steering Wheel 3 Link
+       ============================================================ -->
+
+  <link name="steering_wheel3_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.01"
+                       xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Speed Wheel 1 Link
+       ============================================================ -->
+
+  <link name="speed_wheel1_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.03"
+                       xyz="0 0 0" rpy="1.57  0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57  0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.57  0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Speed Wheel 2 Link
+       ============================================================ -->
+
+  <link name="speed_wheel2_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.03"
+                       xyz="0 0 0" rpy="1.57  0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57  0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.57  0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Speed Wheel 3 Link
+       ============================================================ -->
+
+  <link name="speed_wheel3_link">
+    <xacro:cylinder_inertia m="1.0" r="0.045" h="0.03"
+                       xyz="0 0 0" rpy="1.57  0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+      <material name="">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.57  0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ============================================================
+       Lidar Link
+       ============================================================ -->
+  <link name="livox_frame">
+    <xacro:cylinder_inertia m="1.0" r="0.0325" h="0.06"
+                       xyz="0 0 0" rpy="0 0 0"/>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0325" length="0.06"/>
+      </geometry>
+      <material name="">
+        <color rgba="0 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0325" length="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.045" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_livox_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="livox_frame"/>
+    <origin xyz="0.12 -0.14 0.03" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_steering_wheel1_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="steering_wheel1_link"/>
+    <origin xyz="0.24647 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+  <joint name="base_steering_wheel2_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="steering_wheel2_link"/>
+    <origin xyz="-0.12323 0.21345 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+  <joint name="base_steering_wheel3_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="steering_wheel3_link"/>
+    <origin xyz="-0.12323 -0.21345 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+  <joint name="steer_speed_wheel1_joint" type="revolute">
+    <parent link="steering_wheel1_link"/>
+    <child link="speed_wheel1_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+  <joint name="steer_speed_wheel2_joint" type="revolute">
+    <parent link="steering_wheel2_link"/>
+    <child link="speed_wheel2_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+  <joint name="steer_speed_wheel3_joint" type="revolute">
+    <parent link="steering_wheel3_link"/>
+    <child link="speed_wheel3_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="10.0" velocity="10.0"/>
+  </joint>
+
+
+</robot>

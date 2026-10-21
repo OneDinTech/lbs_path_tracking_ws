@@ -1,0 +1,31 @@
+# =====================================================================
+# manual_config.yaml -- PS4 joystick reader config (ps4.cpp).
+#
+# ps4.cpp reads /joy and publishes /cmd_vel_manual. It does NOT drive
+# motors. The single motor driver (robot_controller.cpp) subscribes to
+# both /cmd_vel (auto) and /cmd_vel_manual (manual) and does all the
+# kinematics + CAN, so there is no separate manual motor driver.
+#
+# Motor parameters (CAN, kinematics, limits, invert_drive) live in
+# robot_controller_config.yaml, not here.
+#
+# Edit here and RELAUNCH -- no colcon build (with --symlink-install).
+# Live:  ros2 param set /dynamic_teleop angular_speed 1.5
+# =====================================================================
+
+/dynamic_teleop:
+  ros__parameters:
+    linear_speed: 0.3           # m/s at full stick
+    angular_speed: 1.0          # rad/s at full stick
+    speed_step: 0.1             # per-button-press change
+
+    # ---- joystick axis indices (ros2 topic echo /joy to find yours) ----
+    axis_vx: 1                  # forward/back  (+1 forward)
+    axis_vy: 0                  # left/right    (+1 left)
+    axis_omega: 3               # rotate        (+1 CCW)
+
+    # ---- button indices (PS4 default) ----
+    btn_linear_up: 2            # Triangle -> linear speed +
+    btn_linear_down: 0          # X        -> linear speed -
+    btn_angular_up: 1           # Circle   -> angular speed +
+    btn_angular_down: 3         # Square   -> angular speed -
