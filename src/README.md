@@ -22,6 +22,11 @@ For competitions there is an interactive **path generator**: type a goal
 
 Clone this repository 
 
+```
+https://github.com/OneDinTech/lbs_path_tracking_ws.git
+
+```
+
 Each new terminal (Livox and FAST-LIO first, then this workspace):
 
 ```bash
