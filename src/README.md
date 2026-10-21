@@ -20,22 +20,13 @@ For competitions there is an interactive **path generator**: type a goal
 
 ## 2. Build
 
-Clone this repository **as the `src` folder** of a workspace:
-
-```bash
-mkdir -p ~/path_tracking_ws
-git clone <this-repo-url> ~/path_tracking_ws/src
-cd ~/path_tracking_ws
-source /opt/ros/humble/setup.bash
-rosdep install --from-paths src -y --ignore-src
-colcon build
-```
+Clone this repository 
 
 Each new terminal (Livox and FAST-LIO first, then this workspace):
 
 ```bash
 source ~/ws_livox/install/setup.bash        # your Livox + FAST-LIO workspace
-source ~/path_tracking_ws/install/setup.bash
+source ~/lbs_path_tracking_ws/install/setup.bash
 ```
 
 ---
