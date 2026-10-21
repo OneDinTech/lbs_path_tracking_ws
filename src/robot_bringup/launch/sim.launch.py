@@ -5,8 +5,8 @@
 #
 # ONE ARGUMENT: mode.
 #   auto   (default) -- path_tracker_sim follows the /plan path with path tracker.
-#                       Publish a path with path_planner_v2.py (full path,
-#                       anchored to the robot pose, same as the real robot).
+#                       Send goals with path_generator (path starts at the
+#                       robot center, same as on the real robot).
 #   manual           -- drive the sim robot with the joystick
 #                       (/cmd_vel_manual), no path needed.
 #
@@ -24,13 +24,13 @@
 #   ros2 launch robot_bringup sim.launch.py                  # auto
 #   ros2 launch robot_bringup sim.launch.py mode:=manual     # joystick
 #   (auto mode) then, in another terminal:
-#   cd ~/path_tracking_ws/src/simulation && python3 path_planner_v2.py
+#   ros2 run controller path_generator
 # =====================================================================
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
@@ -56,8 +56,6 @@ def generate_launch_description():
     manual_yaml = os.path.join(
         get_package_share_directory(CONTROLLER_PKG), 'config', 'manual_config.yaml')
 
-    record = LaunchConfiguration("record")
-    recorder_script = LaunchConfiguration("recorder_script")
     mode = LaunchConfiguration("mode")
     use_rviz = LaunchConfiguration("use_rviz")
 
@@ -76,14 +74,6 @@ def generate_launch_description():
             description="auto = follow /plan with path tracker, "
                         "manual = drive with the joystick"),
         DeclareLaunchArgument("use_rviz", default_value="true"),
-        DeclareLaunchArgument(
-            "record", default_value="true",
-            description="run data_recorder to log the run to CSV"),
-        DeclareLaunchArgument(
-            "recorder_script",
-            default_value=os.path.expanduser(
-                "~/path_tracking_ws/src/simulation/data_recorder.py"),
-            description="path to data_recorder.py"),
         DeclareLaunchArgument(
             "joy_dev_id", default_value="0",
             description="joystick device id, /dev/input/js<N> (manual mode)"),
@@ -143,14 +133,5 @@ def generate_launch_description():
             output="screen",
             arguments=(["-d", rviz_path] if os.path.exists(rviz_path) else []),
             condition=IfCondition(use_rviz),
-        ),
-
-        # CSV recorder: starts on first /plan, stops at goal. Only in auto
-        # (a manual drive has no /plan to trigger on).
-        ExecuteProcess(
-            cmd=["python3", recorder_script],
-            output="screen",
-            condition=IfCondition(PythonExpression(
-                ["'", record, "' == 'true' and '", mode, "' == 'auto'"])),
         ),
     ])
