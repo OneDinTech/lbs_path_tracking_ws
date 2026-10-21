@@ -1,297 +1,198 @@
 # Path Tracker for a 3-Wheel Swerve Robot (ROS 2 Humble)
 
-A path-tracking system for a three-wheel swerve robot using ROS 2 Humble. The system supports path following, localization, and CAN-based motor control.
+A look-ahead path tracker for a holonomic 3-wheel swerve drive robot.
+The robot localizes with **FAST-LIO2** on a **Livox MID-360**, follows a
+`nav_msgs/Path` on `/plan`, and drives its motors over **CAN**. A kinematic
+simulation runs the same tracker with no hardware.
 
-The path tracker follows a predefined path using a look-ahead tracking algorithm. It is designed to work with localization from FAST-LIO2 using a Livox MID-360 LiDAR and can control the robot through a CAN interface.
+For competitions there is an interactive **path generator**: type a goal
+(x, y, theta) measured from the robot center, and the robot drives there.
 
-## Features
+---
 
-- Path tracking using a look-ahead algorithm.
-- ROS 2 Humble integration.
-- Localization support using FAST-LIO2 and Livox MID-360.
-- CAN-based motor control.
-- Planned path input using the `nav_msgs/Path` message type.
-- Configurable tracking parameters.
-- Support for a three-wheel swerve robot.
+## 1. Requirements
 
-## Requirements
+* Ubuntu 22.04 + ROS 2 Humble
+* Built and sourced: [Livox-SDK2](https://github.com/Livox-SDK/Livox-SDK2),
+  [livox_ros_driver2](https://github.com/Livox-SDK/livox_ros_driver2),
+  [FAST_LIO (ROS 2)](https://github.com/hku-mars/FAST_LIO) with a `mid360.yaml` config
+* A SocketCAN interface (`can0`) for the motors (real robot only)
+* For the simulation tools: `python3-numpy`, `python3-yaml`, `python3-matplotlib`
 
-- Ubuntu 22.04
-- ROS 2 Humble
-- Python 3
-- `colcon`
-- Required ROS 2 packages and dependencies
-- FAST-LIO2 and Livox MID-360 drivers for real-robot localization
-- A compatible CAN interface for real-robot motor control
+## 2. Build
 
-## Installation
+Clone this repository
 
-### 1. Clone the Repository
-
-Clone the repository into your home directory:
-
-```bash
+```
 cd ~
 git clone https://github.com/OneDinTech/lbs_path_tracking_ws.git
+
 ```
 
-Navigate to the workspace:
+Each new terminal (Livox and FAST-LIO first, then this workspace):
 
 ```bash
-cd ~/lbs_path_tracking_ws
-```
-
-### 2. Source ROS 2 Humble
-
-```bash
-source /opt/ros/humble/setup.bash
-```
-
-### 3. Install Dependencies
-
-Install the dependencies required by the packages in the workspace:
-
-```bash
-cd ~/lbs_path_tracking_ws
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y
-```
-
-### 4. Build the Workspace
-
-Build the workspace using `colcon`:
-
-```bash
-cd ~/lbs_path_tracking_ws
-colcon build
-```
-
-After the build completes, source the workspace:
-
-```bash
+source ~/ws_livox/install/setup.bash        # your Livox + FAST-LIO workspace
 source ~/lbs_path_tracking_ws/install/setup.bash
 ```
 
-### 5. Automatically Source the Workspace
+---
 
-To avoid manually sourcing ROS 2 and the workspace every time you open a new terminal, add the following lines to your `~/.bashrc` file:
+## 3. Run: competition (real robot + path generator)
 
-```bash
-source /opt/ros/humble/setup.bash
-source ~/lbs_path_tracking_ws/install/setup.bash
-```
-
-Apply the changes:
+**Once per boot** (adapt the interface names and IP to your setup):
 
 ```bash
-source ~/.bashrc
+sudo ip link set can0 up type can bitrate 1000000           # motors
+sudo ip addr add 192.168.1.5/24 dev <lidar_ethernet_iface>  # MID-360 network
 ```
 
-**Note:** If your workspace is located somewhere other than `~/lbs_path_tracking_ws`, update the paths accordingly.
-
-## Running the System
-
-The following steps describe the general workflow for running the path-tracking system. The exact commands depend on the ROS 2 packages and launch files included in the repository.
-
-### 1. Navigate to the Workspace
+**Terminal 1: start the robot**
 
 ```bash
-cd ~/lbs_path_tracking_ws
-source install/setup.bash
+ros2 launch robot_bringup bringup.launch.py mode:=auto
 ```
 
-### 2. Launch the Path Tracker
+Yes, this already includes the Livox driver and FAST-LIO. It starts in stages:
 
-Run the appropriate launch file for your path-tracking package:
+| Time | What starts |
+|------|-------------|
+| 0 s | robot model (URDF), static TFs, joystick |
+| 3 s | Livox driver (`msg_MID360_launch.py`) |
+| 6 s | FAST-LIO (`mapping.launch.py`, `mid360.yaml`). **Keep the robot still for about 3 s** |
+| 9 s | `path_tracker` + `robot_controller` (**motors live**) + CSV recorder |
+
+No joystick? Add `use_joy:=false`.
+
+**Terminal 2: give goals**
 
 ```bash
-ros2 launch <package_name> <launch_file>.launch.py
+ros2 run controller path_generator
 ```
 
-Replace `<package_name>` and `<launch_file>` with the actual package and launch-file names in your workspace.
+```
+New goal
+  x     [m]  : 1.0
+  y     [m]  : 0.5
+  theta [deg]: 90
+  path published on /plan
+```
 
-If the package does not provide a launch file, run the appropriate ROS 2 node directly:
+| Input | Unit | Positive direction |
+|-------|------|--------------------|
+| `x` | m | forward |
+| `y` | m | **right** |
+| `theta` | deg | **clockwise** (negative = counter clockwise), range -180 to 180 |
+
+* Every goal is measured from the **robot center at the moment you press
+  Enter**, wherever the robot is on the map. The origin always moves with the robot.
+* The path is a straight line with a pose every 0.05 m (like `path_planner_v2.py`),
+  each pose with its own heading, interpolated from the start to the goal heading.
+* `x = 0, y = 0` with a theta: the robot turns in place.
+* Empty input counts as 0. A new goal replaces the current one. `q` quits.
+* Turning more than 180 degrees: send it as two goals.
+* Final accuracy is set by `distance_goal_tolerance` and `yaw_goal_tolerance`
+  (see section 6).
+
+## 4. Run: simulation (no hardware)
 
 ```bash
-ros2 run <package_name> <executable_name>
+ros2 launch robot_bringup sim.launch.py          # terminal 1 (opens RViz)
+ros2 run controller path_generator               # terminal 2
 ```
 
-Replace the placeholders with the actual package name and executable.
+The sim uses the same tracker, the same tuning and the same motor limits as
+the real robot. It does not model lidar noise, wheel slip or motor lag.
 
-### 3. Provide a Planned Path
+In RViz set **Fixed Frame** to `map`, then add **RobotModel**
+(topic `/robot_description`), **TF**, and **Path** on `/plan` and `/traveled_path`.
 
-The path tracker subscribes to a planned path published as a `nav_msgs/Path` message on the `/plan` topic.
+## 5. Other launch options
 
-Check whether the topic is available:
+`bringup.launch.py mode:=<mode>`
+
+| Mode | What runs |
+|------|-----------|
+| `auto` (default) | localization + path tracker. Motors live |
+| `sensors_only` | localization only. **Motors stay off** (safe TF / odometry test) |
+| `manual_drive_with_sensors` | joystick driving + localization |
+| `manual_drive_no_sensors` | joystick driving only |
+
+## 6. Changing parameters
+
+1. Edit the YAML file in `src/` (table below).
+2. Rebuild so the file is copied to `install/`: `colcon build`
+3. Relaunch.
+
+To try a value without restarting (lost on the next launch):
 
 ```bash
-ros2 topic list
+ros2 param set /path_tracker kp_heading 1.2
 ```
 
-Inspect the topic information:
+| File | Controls | Most used parameters |
+|------|----------|----------------------|
+| `controller/src/path_tracker/path_tracker_config.yaml` | Tracker tuning, **shared by the real robot and the sim** (`/**` block) | `desired_linear_velocity`, `kp_heading`, `lookahead_time`, `max_linear_acceleration`, `maximum_angular_velocity`, `corner_velocity`, `distance_goal_tolerance`, `yaw_goal_tolerance` |
+| `controller/src/kinematic/robot_controller_config.yaml` | Motor driver: CAN ids, wheel geometry, speed / acceleration limits, safety timeout (also used by the sim) | `speed_ids`, `steer_ids`, `robot_l`, `wheel_r`, `max_linear_velocity`, `wheel_speed_max`, `invert_drive`, `cmd_timeout` |
+| `controller/src/ps4/manual_config.yaml` | Joystick speeds, axes, buttons | `linear_speed`, `angular_speed`, `axis_*`, `btn_*` |
 
-```bash
-ros2 topic info /plan
+**Using a different robot?** Also check the URDF
+(`robot_description/urdf/robot.xacro.urdf`) and the two static transforms
+(`map -> camera_init`, `body -> base_footprint`) in
+`robot_bringup/launch/bringup.launch.py`. They hold the lidar mounting
+position.
+
+---
+
+## 7. Repository structure
+
 ```
-
-Display the published path message:
-
-```bash
-ros2 topic echo /plan
-```
-
-Ensure that a path-planning or path-generation node publishes a valid path to `/plan` before starting path tracking.
-
-The path must use the coordinate frame expected by the path-tracking controller.
-
-### 4. Configure Localization
-
-For real-robot operation, localization can be provided by FAST-LIO2 using the Livox MID-360 LiDAR.
-
-Before starting the path tracker, ensure that:
-
-- The Livox MID-360 is connected and publishing LiDAR data.
-- FAST-LIO2 is running correctly.
-- The localization system publishes the required pose or transform information.
-- The coordinate frames are configured consistently.
-- The path-tracking controller receives the localization information it requires.
-
-The exact topics and coordinate frames depend on the FAST-LIO2 configuration and the implementation of the path-tracking node.
-
-### 5. Configure Motor Control
-
-For real-robot operation, ensure that:
-
-- The CAN interface is configured correctly.
-- The motor controller is connected and responding.
-- The robot's wheel geometry and kinematic parameters are configured correctly.
-- The motor commands are consistent with the robot's kinematic model.
-- The emergency-stop mechanism is functional.
-
-Test the system at low speed before performing full path-tracking experiments.
-
-## Path Generation
-
-The path tracker receives a planned path as input.
-
-A planned path is typically represented by a `nav_msgs/Path` message containing a sequence of `geometry_msgs/PoseStamped` poses.
-
-Each pose represents a position and orientation along the planned trajectory.
-
-The path publisher should ensure that:
-
-- Waypoints are ordered correctly.
-- The path uses the expected coordinate frame.
-- The path contains valid waypoints.
-- The waypoint spacing is appropriate for the controller.
-- The planned trajectory is suitable for the robot's kinematic constraints.
-- The path is published on the topic expected by the path-tracking node.
-
-The path tracker uses the supplied path to calculate the robot's movement commands.
-
-## Configuration and Tuning
-
-Path-tracking performance depends on the robot's geometry, controller parameters, localization accuracy, and the characteristics of the planned path.
-
-Parameters that may require tuning include:
-
-### Look-Ahead Distance
-
-The look-ahead distance determines how far ahead of the robot the controller selects a target point on the path.
-
-A larger look-ahead distance generally produces smoother motion but may reduce tracking accuracy on sharp curves.
-
-A smaller look-ahead distance can improve responsiveness but may cause more aggressive steering or oscillation.
-
-### Linear Velocity
-
-Linear velocity determines the robot's translational speed.
-
-The appropriate velocity depends on the path geometry, controller behavior, localization accuracy, and the robot's physical limitations.
-
-### Angular Velocity
-
-Angular velocity determines the robot's rotational speed.
-
-The controller should limit angular velocity to values that the robot can physically achieve.
-
-### Wheel Geometry
-
-The wheel positions, wheel dimensions, steering constraints, and kinematic parameters must accurately represent the physical robot.
-
-Incorrect geometric parameters can cause discrepancies between the commanded motion and the robot's actual movement.
-
-### Control Frequency
-
-The control frequency determines how frequently the controller updates its commands.
-
-The frequency should be appropriate for the robot's dynamics and the update rates of the localization and motor-control systems.
-
-### Goal Tolerance
-
-Goal tolerance determines when the robot considers itself to have reached its target or final waypoint.
-
-The tolerance should account for localization accuracy and the requirements of the application.
-
-**Note:** Exact parameter names and values depend on the controller implementation and its configuration files.
-
-## ROS 2 Topics
-
-The following table summarizes the principal interface identified for this project.
-
-| Topic | Message Type | Purpose |
-|---|---|---|
-| `/plan` | `nav_msgs/Path` | Supplies the planned path to the path tracker |
-
-Other topics depend on the implementation of the path tracker, localization system, and motor-control nodes.
-
-### Inspect Available Topics
-
-List all active ROS 2 topics:
-
-```bash
-ros2 topic list
-```
-
-Inspect the information for a specific topic:
-
-```bash
-ros2 topic info /plan
-```
-
-Display messages published on a topic:
-
-```bash
-ros2 topic echo /plan
-```
-
-Check the available nodes:
-
-```bash
-ros2 node list
-```
-
-These commands can help identify communication issues between the path tracker, localization system, and path publisher.
-
-## Repository Structure
-
-The repository follows a ROS 2 workspace layout.
-
-```text
-lbs_path_tracking_ws/
-├── src/
-│   └── <path_tracking_package>/
+src/
 ├── README.md
-├── LICENSE
-└── .gitignore
+├── controller/                     C++ package: tracker, path generator, motor driver
+│   ├── CMakeLists.txt
+│   ├── package.xml
+│   ├── include/controller/         headers (tracker math, kinematics, CAN, packing)
+│   └── src/
+│       ├── main/
+│       │   ├── path_tracker.cpp        real robot follower: TF pose + /plan -> /cmd_vel
+│       │   ├── path_tracker_sim.cpp    kinematic sim with the same tracker + motor limits
+│       │   └── path_generator.cpp      interactive goal (x, y, theta) -> /plan
+│       ├── path_tracker/
+│       │   ├── Path_Tracker.cpp        tracking math (look-ahead, speed, heading, corners)
+│       │   └── path_tracker_config.yaml
+│       ├── kinematic/
+│       │   ├── robot_controller.cpp    /cmd_vel -> swerve IK -> CAN motors
+│       │   ├── Swervedrive_Kinematic.cpp
+│       │   └── robot_controller_config.yaml
+│       ├── path_generator/Path_Generation.cpp   path helper functions (library)
+│       ├── Localizer/odom_wheel.cpp    dead wheel + IMU odometry (fallback, unused by default)
+│       ├── calibrator/calibrate.cpp    wheel / steering calibration tool
+│       ├── ps4/                        PS4 joystick -> /cmd_vel_manual (+ YAML)
+│       ├── driver/driver.cpp           motor CAN frame protocol
+│       └── lib/                        SocketCAN wrapper, byte packing
+├── robot_bringup/                  launch files
+│   └── launch/
+│       ├── bringup.launch.py           real robot: model, TF, Livox, FAST-LIO, tracker, motors
+│       ├── sim.launch.py               simulation + RViz
+│       └── description.launch.py       robot model + joint sliders + RViz (no motors)
+├── robot_description/              URDF of the robot
+│   └── urdf/robot.xacro.urdf
 ```
 
-The exact contents of `src/` depend on the ROS 2 packages included in the repository.
+### Topics
 
-The `<path_tracking_package>` entry is a placeholder for the actual package directory name.
+| Topic | Type | From -> To |
+|-------|------|------------|
+| `/plan` | `nav_msgs/Path` (frame `map`) | path_generator / planner -> path_tracker |
+| `/cmd_vel` | `geometry_msgs/Twist` (body frame) | path_tracker -> robot_controller |
+| `/cmd_vel_manual` | `geometry_msgs/Twist` | ps4 -> robot_controller |
+| `/joint_states` | `sensor_msgs/JointState` | robot_controller or sim -> RViz |
+| TF `map -> base_footprint` | | FAST-LIO + static TFs (real) or the sim |
 
-The `build/`, `install/`, and `log/` directories are generated when the workspace is built. These directories generally should not be committed to Git.
+## Safety
 
-## License
-
-See the [LICENSE](LICENSE) file for license information.
+In `auto` and the manual modes the motors are live. Clear the area first.
+`robot_controller` stops the robot if no command arrives within
+`cmd_timeout` (0.3 s), and `path_tracker` stops if the pose is older than
+`pose_timeout` (0.25 s). Use `sensors_only` to test without driving.
