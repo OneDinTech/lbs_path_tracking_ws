@@ -31,7 +31,7 @@
 #       robot_state_publisher, now started by THIS file in stage 0)
 #
 #   path_tracker reads map -> base_footprint from TF.
-#   path_planner_v2.py must publish in "map" (frame_id in path_config_v2.yaml).
+#   paths on /plan must be in the "map" frame (path_generator does this).
 #
 # Exactly one publisher per TF edge:
 #   - FAST-LIO owns camera_init -> body
@@ -68,7 +68,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,
-                            TimerAction, GroupAction, LogInfo, ExecuteProcess)
+                            TimerAction, GroupAction, LogInfo)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (LaunchConfiguration, PythonExpression,
@@ -103,8 +103,6 @@ def generate_launch_description():
 
     mode    = LaunchConfiguration('mode')
     use_joy = LaunchConfiguration('use_joy')
-    record  = LaunchConfiguration('record')
-    recorder_script = LaunchConfiguration('recorder_script')
 
     args = [
         DeclareLaunchArgument(
@@ -122,14 +120,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_rviz', default_value='false',
             description='open RViz'),
-        DeclareLaunchArgument(
-            'record', default_value='true',
-            description='run data_recorder to log an auto run to CSV'),
-        DeclareLaunchArgument(
-            'recorder_script',
-            default_value=os.path.expanduser(
-                '~/path_tracking_ws/src/simulation/data_recorder.py'),
-            description='path to data_recorder.py'),
     ]
 
     # ---- mode predicates -------------------------------------------
@@ -338,22 +328,12 @@ def generate_launch_description():
 
     # path_tracker still starts LAST (t=9) so it never follows a
     # path before FAST-LIO's TF exists. Only runs in auto.
-    # CSV recorder: only in auto (needs a /plan). Self-starts on the
-    # first /plan and stops at goal; safe to launch alongside the
-    # controller.
-    recorder = ExecuteProcess(
-        cmd=['python3', recorder_script],
-        output='screen',
-        condition=IfCondition(PythonExpression(
-            ["'", record, "' == 'true' and '", mode, "' == 'auto'"])),
-    )
 
     stage3 = TimerAction(period=9.0, actions=[
         LogInfo(msg='[bringup] stage 3: autonomous control coming up, '
                     'CLEAR THE AREA'),
         path_tracker,
         robot_controller_auto,
-        recorder,
     ])
 
     return LaunchDescription(
